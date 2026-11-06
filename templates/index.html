@@ -1,0 +1,414 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CivicFix - Complaint Management</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<div class="app">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <h2 class="logo">🌿 CivicFix</h2>
+
+        <button id="newReportBtn" class="report-btn">
+            + Report an Issue
+        </button>
+
+        <nav>
+            <button class="nav-link active" data-page="dashboard">
+                🏠 Dashboard
+            </button>
+
+            <button class="nav-link" data-page="reports">
+                📄 My Reports
+            </button>
+
+            <button class="nav-link" data-page="contractors">
+                🛠 Contractors
+            </button>
+
+            <button class="nav-link" data-page="analytics">
+                📊 Analytics
+            </button>
+
+            <button class="nav-link" data-page="profile">
+                👤 Profile
+            </button>
+        </nav>
+
+        <button id="logoutBtn" class="logout-btn"
+                onclick="window.location.href='/logout'">
+            ↪ Log Out
+        </button>
+
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <!-- TOP NAVBAR -->
+        <header class="topbar">
+
+            <input type="search"
+                   id="searchInput"
+                   placeholder="Search issues...">
+
+            <div class="top-actions">
+                <button id="themeBtn">🌙</button>
+                <span>🔔</span>
+                <span>👤</span>
+            </div>
+
+        </header>
+
+        <!-- DASHBOARD PAGE -->
+        <section class="page active" id="dashboard">
+
+            <div class="page-heading">
+                <div>
+                    <h1>Dashboard</h1>
+                    <p>Welcome to your CivicFix dashboard</p>
+                </div>
+
+                <button id="newReportBtn2" class="report-btn">
+                    + New Report
+                </button>
+            </div>
+
+            <div class="stats-grid">
+
+                <div class="stat-card">
+                    <p>Total Reports</p>
+                    <h2 id="totalCount">0</h2>
+                </div>
+
+                <div class="stat-card">
+                    <p>In Progress</p>
+                    <h2 id="progressCount">0</h2>
+                </div>
+
+                <div class="stat-card">
+                    <p>Pending Approval</p>
+                    <h2 id="pendingCount">0</h2>
+                </div>
+
+                <div class="stat-card">
+                    <p>Completed</p>
+                    <h2 id="resolvedCount">0</h2>
+                </div>
+
+            </div>
+
+            <div class="dashboard-grid">
+
+                <div class="content-card">
+                    <h2>Recent Reports</h2>
+                    <p>Your recently registered complaints</p>
+                    <div id="dashboardReports"></div>
+                </div>
+
+                <div class="content-card">
+                    <h2>Report Statistics</h2>
+                    <p>This Month</p>
+                    <h3 id="monthCount">0 reports</h3>
+
+                    <div class="bar">
+                        <span id="monthBar"></span>
+                    </div>
+
+                    <p>Track your complaint activity here.</p>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- MY REPORTS PAGE -->
+        <section class="page" id="reports">
+
+            <div class="page-heading">
+                <div>
+                    <h1>My Reports</h1>
+                    <p>Manage and track your reported issues</p>
+                </div>
+
+                <button class="report-btn" onclick="openModal()">
+                    + New Report
+                </button>
+            </div>
+
+            <div class="content-card">
+                <h2>Your Reports</h2>
+                <p>All issues you have reported</p>
+                <div id="complaintList"></div>
+            </div>
+
+        </section>
+
+        <!-- CONTRACTORS PAGE: READ ONLY -->
+        
+<!-- CONTRACTORS PAGE -->
+<section class="page" id="contractors">
+
+    <h1>Contractors</h1>
+    <p>Manage and view service contractors</p>
+    
+<!-- CONTRACTOR CATEGORY FILTER -->
+<select id="contractorCategoryFilter">
+    <option value="All">All Categories</option>
+    <option value="Road Maintenance">Road Maintenance</option>
+    <option value="Water Supply">Water Supply</option>
+    <option value="Electricity">Electricity</option>
+    <option value="Sanitation">Sanitation</option>
+</select>
+
+    
+
+    <!-- Search and Filter -->
+    <div class="contractor-toolbar">
+        <input
+            type="text"
+            id="contractorSearch"
+            placeholder="Search contractor name..."
+        >
+
+        <select id="contractorFilter">
+            <option value="All">All Categories</option>
+            <option value="Road Maintenance">Road</option>
+            <option value="Water Supply">Water</option>
+            <option value="Electricity">Electricity</option>
+            <option value="Sanitation">Sanitation</option>
+        </select>
+    </div>
+
+<!-- ADD CONTRACTOR FORM -->
+<div class="content-card contractor-form">
+
+    <h2>+ Add New Contractor</h2>
+
+    <form id="contractorForm">
+
+        <input type="text"
+               id="newContractorName"
+               placeholder="Contractor Name"
+               required>
+
+        <select id="newContractorCategory" required>
+            <option value="">Select Category</option>
+            <option value="Road Maintenance">Road</option>
+            <option value="Water Supply">Water</option>
+            <option value="Electricity">Electricity</option>
+            <option value="Sanitation">Sanitation</option>
+        </select>
+
+        <input type="tel"
+               id="newContractorPhone"
+               placeholder="10 Digit Phone Number"
+               pattern="[0-9]{10}"
+               required>
+
+        <select id="newContractorStatus">
+            <option value="Available">Available</option>
+            <option value="Busy">Busy</option>
+            <option value="Completed">Completed</option>
+        </select>
+
+        <button type="submit">Add Contractor</button>
+
+    </form>
+
+    <p id="contractorMessage"></p>
+
+</div>
+
+
+    <!-- Contractor Cards -->
+    <div class="contractor-grid" id="contractorList">
+
+        <div class="contractor-card">
+            <div class="contractor-icon">🛣️</div>
+            <h2>Ravi Kumar</h2>
+            <p class="service">Road Maintenance</p>
+            <p>📞 9876543210</p>
+            <span class="work-status available">Available</span>
+        </div>
+
+        <div class="contractor-card">
+            <div class="contractor-icon">💧</div>
+            <h2>Suresh Reddy</h2>
+            <p class="service">Water Supply</p>
+            <p>📞 9876543211</p>
+            <span class="work-status busy">Busy</span>
+        </div>
+
+        <div class="contractor-card">
+            <div class="contractor-icon">💡</div>
+            <h2>Prakash</h2>
+            <p class="service">Electricity</p>
+            <p>📞 9876543212</p>
+            <span class="work-status available">Available</span>
+        </div>
+
+        <div class="contractor-card">
+            <div class="contractor-icon">🧹</div>
+            <h2>Ramesh</h2>
+            <p class="service">Sanitation</p>
+            <p>📞 9876543213</p>
+            <span class="work-status completed">Completed</span>
+        </div>
+
+    </div>
+</section>
+
+
+
+        <!-- ANALYTICS PAGE -->
+        <section class="page" id="analytics">
+
+            <h1>Analytics</h1>
+            <p>Overview of your complaint statistics</p>
+
+            <div class="stats-grid">
+
+                <div class="stat-card">
+                    <p>Total Reports</p>
+                    <h2 id="analyticsTotal">0</h2>
+                </div>
+
+                <div class="stat-card">
+                    <p>Pending</p>
+                    <h2 id="analyticsPending">0</h2>
+                </div>
+
+                <div class="stat-card">
+                    <p>In Progress</p>
+                    <h2 id="analyticsProgress">0</h2>
+                </div>
+
+                <div class="stat-card">
+                    <p>Completed</p>
+                    <h2 id="analyticsResolved">0</h2>
+                </div>
+
+            </div>
+
+            <div class="charts-grid">
+
+                <div class="content-card">
+                    <h2>Complaint Status Distribution</h2>
+                    <canvas id="statusChart"></canvas>
+                </div>
+
+                <div class="content-card">
+                    <h2>Category-wise Complaints</h2>
+                    <canvas id="categoryChart"></canvas>
+                </div>
+
+            </div>
+
+            <div class="content-card">
+                <h2>Resolution Summary</h2>
+                <p>Total Complaints:
+                    <strong id="summaryTotal">0</strong>
+                </p>
+                <p>Resolved Complaints:
+                    <strong id="summaryResolved">0</strong>
+                </p>
+                <p>Resolution Rate:
+                    <strong id="resolutionRate">0%</strong>
+                </p>
+            </div>
+
+        </section>
+
+        <!-- PROFILE PAGE -->
+        <section class="page" id="profile">
+
+            <h1>Profile</h1>
+            <p>Manage your account information</p>
+
+            <div class="profile-card">
+                <h2>User Profile</h2>
+
+                <label>Application Name</label>
+                <input type="text" value="CivicFix" readonly>
+
+                <label>Full Name</label>
+                <input type="text" id="profileName" readonly>
+
+                <label>Email Address</label>
+                <input type="email" id="profileEmail" readonly>
+
+                <label>Account Type</label>
+                <input type="text" value="User" readonly>
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<!-- REPORT MODAL -->
+<div class="modal" id="reportModal">
+
+    <div class="modal-content">
+
+        <button id="closeModal" class="close-btn">✕</button>
+
+        <h2>Report an Issue</h2>
+        <p>Fill in the details below to register your complaint.</p>
+
+        <form id="complaintForm">
+
+            <label>Full Name</label>
+            <input type="text" id="name"
+                   placeholder="Enter your name" required>
+
+            <label>Email</label>
+            <input type="email" id="email"
+                   placeholder="Enter your email" required>
+
+            <label>Category</label>
+            <select id="category" required>
+                <option value="">Select Category</option>
+                <option>Road / Transport</option>
+                <option>Water Supply</option>
+                <option>Electricity</option>
+                <option>Sanitation</option>
+                <option>Public Safety</option>
+                <option>Other</option>
+            </select>
+
+            <label>Subject</label>
+            <input type="text" id="subject"
+                   placeholder="Complaint subject" required>
+
+            <label>Description</label>
+            <textarea id="description"
+                      placeholder="Explain your complaint"
+                      required></textarea>
+
+            <button type="submit">Submit Report</button>
+
+        </form>
+
+    </div>
+
+</div>
+
+<!-- SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+</body>
+</html>

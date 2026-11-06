@@ -1,0 +1,831 @@
+
+/* ==============================
+   1. GLOBAL STYLES
+============================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f6f8fb;
+    color: #252b3b;
+}
+
+button, input, select, textarea {
+    font-family: inherit;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+}
+
+
+/* ==============================
+   2. MAIN LAYOUT
+============================== */
+
+.app {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 215px;
+    background: white;
+    border-right: 1px solid #e5e7eb;
+    padding: 20px 12px;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.logo {
+    color: #399b8d;
+    font-size: 25px;
+    margin: 0 10px 30px;
+}
+
+.report-btn {
+    background: #45a696;
+    color: white;
+    padding: 13px;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.report-btn:hover {
+    background: #318879;
+}
+
+
+/* ==============================
+   3. SIDEBAR NAVIGATION
+============================== */
+
+.sidebar nav {
+    margin-top: 25px;
+}
+
+.nav-link {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 13px 12px;
+    margin-bottom: 5px;
+    background: transparent;
+    color: #303746;
+    font-size: 15px;
+    border-radius: 7px;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    background: #edf2f8;
+    color: #269687;
+    font-weight: bold;
+}
+
+.logout-btn {
+    margin-top: auto;
+    padding: 14px 10px;
+    text-align: left;
+    background: white;
+    color: #333;
+    border-top: 1px solid #eee;
+}
+
+
+/* ==============================
+   4. MAIN CONTENT
+============================== */
+
+.main-content {
+    flex: 1;
+    min-width: 0;
+    padding-bottom: 30px;
+}
+
+.topbar {
+    height: 65px;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 25px;
+}
+
+.topbar input {
+    width: 380px;
+    max-width: 70%;
+    padding: 11px;
+    border: 1px solid #e0e3e8;
+    border-radius: 7px;
+}
+
+.top-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 20px;
+}
+
+.top-actions button {
+    background: transparent;
+    color: inherit;
+    font-size: 20px;
+}
+
+
+/* ==============================
+   5. PAGE NAVIGATION
+============================== */
+
+.page {
+    display: none;
+    padding: 25px;
+}
+
+.page.active {
+    display: block;
+}
+
+.page-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.page h1 {
+    font-size: 25px;
+    margin-bottom: 6px;
+}
+
+.page-heading p,
+.page > p {
+    color: #7c8493;
+    font-size: 14px;
+}
+
+
+/* ==============================
+   6. DASHBOARD STATISTICS
+============================== */
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    background: white;
+    border: 1px solid #e5e8ee;
+    border-radius: 9px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+}
+
+.stat-card p {
+    color: #777f8d;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.stat-card h2 {
+    font-size: 27px;
+    color: #252b3b;
+}
+
+
+/* ==============================
+   7. DASHBOARD CONTENT
+============================== */
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+}
+
+.content-card {
+    background: white;
+    border: 1px solid #e4e7ed;
+    border-radius: 9px;
+    padding: 22px;
+    margin-top: 15px;
+}
+
+.content-card h2 {
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: #202738;
+}
+
+.content-card > p {
+    color: #828998;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+
+/* ==============================
+   8. COMPLAINT CARDS
+============================== */
+
+.report-card {
+    position: relative;
+    background: white;
+    border: 1px solid #e1e5eb;
+    border-radius: 9px;
+    padding: 18px;
+    margin-top: 15px;
+    transition: 0.3s;
+}
+
+.report-card:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.07);
+    transform: translateY(-2px);
+}
+
+.report-card h3 {
+    font-size: 17px;
+    margin-bottom: 12px;
+    color: #252b3b;
+    overflow-wrap: anywhere;
+}
+
+.report-card p {
+    font-size: 13px;
+    margin: 8px 0;
+    color: #515968;
+    overflow-wrap: anywhere;
+}
+
+.status {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    background: #fff5d8;
+    color: #a87912;
+}
+
+.status.in-progress {
+    background: #e7efff;
+    color: #3763c9;
+}
+
+.status.resolved {
+    background: #e4f7eb;
+    color: #299456;
+}
+
+.report-card select {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid #d5d9e0;
+    border-radius: 6px;
+    background: white;
+}
+
+.card-actions {
+    margin-top: 10px;
+}
+
+.delete-btn {
+    background: #e64c58;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 6px;
+}
+
+.delete-btn:hover {
+    background: #c83240;
+}
+
+
+/* ==============================
+   9. PROGRESS BAR
+============================== */
+
+.bar {
+    height: 8px;
+    background: #e7e9ed;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0 20px;
+}
+
+.bar span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: #48aa9a;
+    border-radius: 10px;
+}
+
+
+/* ==============================
+   10. FORM ELEMENTS
+============================== */
+
+label {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 11px;
+    border: 1px solid #d5d9e0;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: #45a696;
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+form button[type="submit"] {
+    background: #45a696;
+    color: white;
+    padding: 12px 20px;
+    margin-top: 18px;
+    border-radius: 6px;
+}
+
+form button[type="submit"]:hover {
+    background: #318879;
+}
+
+
+/* ==============================
+   11. REPORT MODAL
+============================== */
+
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0,0,0,0.55);
+    justify-content: center;
+    align-items: center;
+    padding: 15px;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    position: relative;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+}
+
+.modal-content h2 {
+    color: #252b3b;
+    margin-bottom: 8px;
+}
+
+.modal-content p {
+    color: #7c8493;
+    font-size: 14px;
+}
+
+.close-btn {
+    position: absolute;
+    top: 12px;
+    right: 15px;
+    background: transparent;
+    color: #555;
+    font-size: 22px;
+    margin: 0;
+}
+
+
+/* ==============================
+   12. DARK MODE
+============================== */
+
+body.dark {
+    background: #151b28;
+    color: #f5f5f5;
+}
+
+body.dark .sidebar,
+body.dark .topbar,
+body.dark .content-card,
+body.dark .stat-card,
+body.dark .report-card {
+    background: #222b3b;
+    color: white;
+    border-color: #394457;
+}
+
+body.dark .nav-link,
+body.dark .logout-btn {
+    color: white;
+    background: transparent;
+}
+
+body.dark .nav-link.active {
+    background: #354457;
+}
+
+body.dark .report-card h3,
+body.dark .content-card h2,
+body.dark .stat-card h2 {
+    color: white;
+}
+
+body.dark input,
+body.dark select,
+body.dark textarea {
+    background: #303b4d;
+    color: white;
+    border-color: #536078;
+}
+
+body.dark .modal-content {
+    background: #222b3b;
+    color: white;
+}
+
+
+/* ==============================
+   13. RESPONSIVE DESIGN
+============================== */
+
+@media (max-width: 1000px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 650px) {
+    .app {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        padding: 12px;
+    }
+
+    .logo {
+        margin-bottom: 12px;
+    }
+
+    .sidebar nav {
+        display: flex;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
+
+    .nav-link {
+        width: auto;
+        flex: 1 1 30%;
+        font-size: 12px;
+        padding: 10px 5px;
+        text-align: center;
+    }
+
+    .logout-btn {
+        margin-top: 10px;
+    }
+
+    .topbar {
+        padding: 10px;
+    }
+
+    .page {
+        padding: 15px;
+    }
+
+    .page-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .stat-card {
+        padding: 13px;
+    }
+
+    .modal-content {
+        padding: 18px;
+    }
+}
+
+
+/* Login and Registration Pages */
+
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background: #f1f5f9;
+}
+
+.login-box {
+    width: 100%;
+    max-width: 420px;
+    padding: 35px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+}
+
+.login-box h1 {
+    text-align: center;
+    color: #15803d;
+    margin-bottom: 10px;
+}
+
+.login-box h2,
+.login-box p {
+    text-align: center;
+}
+
+.login-box label {
+    display: block;
+    margin-top: 15px;
+    font-weight: 600;
+}
+
+.login-box input {
+    width: 100%;
+    padding: 12px;
+    margin-top: 7px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+
+.login-box button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 20px;
+    background: #15803d;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.login-box button:hover {
+    background: #166534;
+}
+
+.login-box a {
+    color: #15803d;
+    text-decoration: none;
+}
+
+.form-error {
+    color: #dc2626;
+    text-align: center;
+}
+
+.success-message {
+    color: #15803d;
+    text-align: center;
+}
+
+.charts-grid canvas {
+    width: 100% !important;
+    height: 300px !important;
+}
+
+/* Professional Analytics Design */
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+    margin-top: 25px;
+}
+
+.charts-grid .content-card {
+    background: #ffffff;
+    padding: 24px;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+    min-width: 0;
+}
+
+.charts-grid .content-card h2 {
+    font-size: 18px;
+    margin-bottom: 20px;
+    color: #1e293b;
+}
+
+.charts-grid canvas {
+    width: 100% !important;
+    height: 280px !important;
+}
+
+#analytics .stat-card {
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
+    transition: transform 0.3s ease;
+}
+
+#analytics .stat-card:hover {
+    transform: translateY(-4px);
+}
+
+#analytics .content-card {
+    background: white;
+    padding: 22px;
+    border-radius: 12px;
+    margin-top: 20px;
+    border: 1px solid #e5e7eb;
+}
+
+@media (max-width: 768px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* Contractors Page */
+
+.contractor-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+    margin-top: 25px;
+}
+
+.contractor-card {
+    background: white;
+    padding: 25px;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    transition: 0.3s;
+}
+
+.contractor-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.contractor-icon {
+    font-size: 35px;
+    margin-bottom: 12px;
+}
+
+.contractor-card h2 {
+    font-size: 20px;
+    margin-bottom: 8px;
+}
+
+.contractor-card p {
+    margin: 10px 0;
+    color: #64748b;
+}
+
+.contractor-card .service {
+    color: #0d9488;
+    font-weight: bold;
+}
+
+.work-status {
+    display: inline-block;
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-top: 8px;
+}
+
+.available {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.busy {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.completed {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+@media (max-width: 768px) {
+    .contractor-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.contractor-form {
+    background: white;
+    padding: 22px;
+    margin: 20px 0;
+    border-radius: 12px;
+}
+
+#contractorForm {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+    margin-top: 18px;
+}
+
+#contractorForm input,
+#contractorForm select {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+#contractorForm button {
+    background: #269f8d;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+@media(max-width: 600px) {
+    #contractorForm {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Contractor Edit and Delete Buttons */
+
+.contractor-card button {
+    padding: 8px 16px;
+    margin-right: 10px;
+    margin-top: 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.contractor-card button:first-of-type {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.contractor-card button:last-of-type {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.contractor-card button:hover {
+    opacity: 0.8;
+}
