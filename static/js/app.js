@@ -1,13 +1,38 @@
 const API = "/api/complaints";
+const CONTRACTOR_API = "/api/contractors";
 
 let complaints = [];
+let editingContractorId = null;
+
+// =====================================
+// PAGE ELEMENTS
+// =====================================
 
 const form = document.getElementById("complaintForm");
 const modal = document.getElementById("reportModal");
 const complaintList = document.getElementById("complaintList");
 const searchInput = document.getElementById("searchInput");
 
-// Escape HTML
+// =====================================
+// API RESPONSE HELPER
+// =====================================
+
+async function getResponseData(response) {
+    const text = await response.text();
+
+    if (!text) return {};
+
+    try {
+        return JSON.parse(text);
+    } catch {
+        return { error: text };
+    }
+}
+
+// =====================================
+// ESCAPE HTML
+// =====================================
+
 function escapeHTML(value) {
     return String(value ?? "").replace(/[&<>"']/g, char => ({
         "&": "&amp;",
@@ -18,32 +43,78 @@ function escapeHTML(value) {
     })[char]);
 }
 
-// Open modal
+// =====================================
+// GET MONGODB ID
+// =====================================
+
+function normalizeMongoId(id) {
+    if (!id) return "";
+
+    if (typeof id === "string") {
+        return id.trim();
+    }
+
+    if (typeof id === "object") {
+        if (id.$oid) return String(id.$oid);
+        if (id.oid) return String(id.oid);
+    }
+
+    return "";
+}
+
+function getComplaintId(complaint) {
+    return normalizeMongoId(
+        complaint?.id ?? complaint?._id
+    );
+}
+
+function getContractorId(contractor) {
+    return normalizeMongoId(
+        contractor?.id ?? contractor?._id
+    );
+}
+
+// =====================================
+// MODAL FUNCTIONS
+// =====================================
+
 function openModal() {
-    modal.classList.add("show");
+    if (modal) {
+        modal.classList.add("show");
+    }
 }
 
-// Close modal
 function closeModal() {
-    modal.classList.remove("show");
+    if (modal) {
+        modal.classList.remove("show");
+    }
 }
 
-document.getElementById("newReportBtn").onclick = openModal;
-document.getElementById("newReportBtn2").onclick = openModal;
-document.getElementById("closeModal").onclick = closeModal;
+document.getElementById("newReportBtn")?.addEventListener(
+    "click", openModal
+);
 
+document.getElementById("newReportBtn2")?.addEventListener(
+    "click", openModal
+);
 
-// Sidebar Navigation
+document.getElementById("closeModal")?.addEventListener(
+    "click", closeModal
+);
+
+// =====================================
+// SIDEBAR NAVIGATION
+// =====================================
+
 document.querySelectorAll(".nav-link").forEach(button => {
     button.addEventListener("click", function () {
-
         const pageId = this.dataset.page;
 
         document.querySelectorAll(".page").forEach(page => {
             page.classList.remove("active");
         });
 
-        document.getElementById(pageId).classList.add("active");
+        document.getElementById(pageId)?.classList.add("active");
 
         document.querySelectorAll(".nav-link").forEach(link => {
             link.classList.remove("active");
@@ -53,33 +124,57 @@ document.querySelectorAll(".nav-link").forEach(button => {
     });
 });
 
+// =====================================
+// LOAD COMPLAINTS
+// =====================================
 
-// Load Complaints
 async function loadComplaints() {
     try {
-        const response = await fetch(API);
+        const response = await fetch(API, {
+            method: "GET",
+            credentials: "same-origin",
+            headers: {
+                "Accept": "application/json"
+            }
+        });
+
+        const data = await getResponseData(response);
 
         if (!response.ok) {
-            throw new Error("Unable to load complaints");
+            throw new Error(
+                data.error || "Unable to load complaints"
+            );
         }
 
-        complaints = await response.json();
+        complaints = Array.isArray(data) ? data : [];
+
+        console.log("Loaded complaints:", complaints);
 
         updateDashboard();
         updateAnalytics();
+
         displayComplaints(complaints, "complaintList");
-        displayComplaints(complaints.slice(0, 3), "dashboardReports");
+
+        displayComplaints(
+            complaints.slice(0, 3),
+            "dashboardReports"
+        );
 
     } catch (error) {
-        console.error(error);
-        complaintList.innerHTML = "<p>Unable to load complaints.</p>";
+        console.error("Load complaints error:", error);
+
+        if (complaintList) {
+            complaintList.innerHTML =
+                "<p>Unable to load complaints.</p>";
+        }
     }
 }
 
+// =====================================
+// DASHBOARD COUNTERS
+// =====================================
 
-// Dashboard Counters
 function updateDashboard() {
-
     const total = complaints.length;
 
     const pending = complaints.filter(
@@ -94,39 +189,48 @@ function updateDashboard() {
         c => c.status === "Resolved"
     ).length;
 
-    document.getElementById("totalCount").textContent = total;
-    document.getElementById("pendingCount").textContent = pending;
-    document.getElementById("progressCount").textContent = progress;
-    document.getElementById("resolvedCount").textContent = resolved;
+    const setText = (id, value) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value;
+    };
 
-    document.getElementById("monthCount").textContent =
-        total + " reports";
+    setText("totalCount", total);
+    setText("pendingCount", pending);
+    setText("progressCount", progress);
+    setText("resolvedCount", resolved);
 
-    document.getElementById("monthBar").style.width =
-        (total === 0 ? 0 : 100) + "%";
+    setText("monthCount", total + " reports");
 
-    // Analytics page
-    document.getElementById("analyticsTotal").textContent = total;
-    document.getElementById("analyticsPending").textContent = pending;
-    document.getElementById("analyticsProgress").textContent = progress;
-    document.getElementById("analyticsResolved").textContent = resolved;
+    const monthBar = document.getElementById("monthBar");
+
+    if (monthBar) {
+        monthBar.style.width =
+            (total === 0 ? 0 : 100) + "%";
+    }
+
+    setText("analyticsTotal", total);
+    setText("analyticsPending", pending);
+    setText("analyticsProgress", progress);
+    setText("analyticsResolved", resolved);
 }
 
+// =====================================
+// DISPLAY COMPLAINT CARDS
+// =====================================
 
-// Display Complaint Cards
 function displayComplaints(data, elementId) {
-
     const container = document.getElementById(elementId);
 
-    if (data.length === 0) {
+    if (!container) return;
+
+    if (!data || data.length === 0) {
         container.innerHTML = "<p>No reports available.</p>";
         return;
     }
 
     container.innerHTML = data.map(c => {
-
         const status = c.status || "Pending";
-        const id = c.id || c._id;
+        const id = getComplaintId(c);
 
         let statusClass = "pending";
 
@@ -139,6 +243,8 @@ function displayComplaints(data, elementId) {
         const progressValue =
             status === "Resolved" ? 100 :
             status === "In Progress" ? 50 : 0;
+
+        const safeId = escapeHTML(id);
 
         return `
             <div class="report-card">
@@ -162,14 +268,32 @@ function displayComplaints(data, elementId) {
                     <span style="width:${progressValue}%"></span>
                 </div>
 
-                <select onchange="updateStatus('${id}', this.value)">
-                    <option value="Pending" ${status === "Pending" ? "selected" : ""}>Pending</option>
-                    <option value="In Progress" ${status === "In Progress" ? "selected" : ""}>In Progress</option>
-                    <option value="Resolved" ${status === "Resolved" ? "selected" : ""}>Resolved</option>
+                <select
+                    onchange="updateStatus('${safeId}', this.value)"
+                    ${id ? "" : "disabled"}
+                >
+                    <option value="Pending"
+                        ${status === "Pending" ? "selected" : ""}>
+                        Pending
+                    </option>
+
+                    <option value="In Progress"
+                        ${status === "In Progress" ? "selected" : ""}>
+                        In Progress
+                    </option>
+
+                    <option value="Resolved"
+                        ${status === "Resolved" ? "selected" : ""}>
+                        Resolved
+                    </option>
                 </select>
 
-                <button class="delete-btn"
-                    onclick="deleteComplaint('${id}')">
+                <button
+                    class="delete-btn"
+                    type="button"
+                    onclick="deleteComplaint('${safeId}')"
+                    ${id ? "" : "disabled"}
+                >
                     Delete
                 </button>
 
@@ -178,66 +302,85 @@ function displayComplaints(data, elementId) {
     }).join("");
 }
 
+// =====================================
+// SUBMIT NEW COMPLAINT
+// =====================================
 
-// Submit New Complaint
-form.addEventListener("submit", async function(event) {
+if (form) {
+    form.addEventListener("submit", async function(event) {
+        event.preventDefault();
 
-    event.preventDefault();
+        const complaint = {
+            name: document.getElementById("name").value.trim(),
+            email: document.getElementById("email").value.trim(),
+            category: document.getElementById("category").value,
+            subject: document.getElementById("subject").value.trim(),
+            description: document.getElementById("description").value.trim()
+        };
 
-    const complaint = {
-        name: document.getElementById("name").value.trim(),
-        email: document.getElementById("email").value.trim(),
-        category: document.getElementById("category").value,
-        subject: document.getElementById("subject").value.trim(),
-        description: document.getElementById("description").value.trim()
-    };
+        try {
+            const response = await fetch(API, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify(complaint)
+            });
 
-    try {
+            const result = await getResponseData(response);
 
-        const response = await fetch(API, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(complaint)
-        });
+            if (!response.ok) {
+                throw new Error(
+                    result.error || "Submission failed"
+                );
+            }
 
-        const result = await response.json();
+            alert("Report submitted successfully!");
 
-        if (!response.ok) {
-            throw new Error(result.error || "Submission failed");
+            form.reset();
+            closeModal();
+
+            await loadComplaints();
+
+        } catch (error) {
+            console.error("Submit complaint error:", error);
+            alert(error.message);
         }
+    });
+}
 
-        alert("Report submitted successfully!");
+// =====================================
+// UPDATE COMPLAINT STATUS
+// =====================================
 
-        form.reset();
-        closeModal();
-
-        await loadComplaints();
-
-    } catch (error) {
-        alert(error.message);
-    }
-});
-
-
-// Update Status
 async function updateStatus(id, status) {
+    if (!id) {
+        alert("Complaint ID is missing.");
+        return;
+    }
 
     try {
+        const response = await fetch(
+            `${API}/${encodeURIComponent(id)}`,
+            {
+                method: "PUT",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({ status })
+            }
+        );
 
-        const response = await fetch(`${API}/${id}`, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ status })
-        });
-
-        const result = await response.json();
+        const result = await getResponseData(response);
 
         if (!response.ok) {
-            throw new Error(result.error || "Update failed");
+            throw new Error(
+                result.error || "Update failed"
+            );
         }
 
         alert("Status updated successfully!");
@@ -245,28 +388,56 @@ async function updateStatus(id, status) {
         await loadComplaints();
 
     } catch (error) {
+        console.error("Update complaint error:", error);
         alert(error.message);
     }
 }
 
+// =====================================
+// DELETE COMPLAINT
+// =====================================
 
-// Delete Complaint
 async function deleteComplaint(id) {
-
-    if (!confirm("Are you sure you want to delete this report?")) {
+    if (!id) {
+        alert("Complaint ID is missing.");
         return;
     }
 
-    try {
+    const confirmDelete = confirm(
+        "Are you sure you want to delete this report?"
+    );
 
-        const response = await fetch(`${API}/${id}`, {
-            method: "DELETE"
+    if (!confirmDelete) return;
+
+    try {
+        const url =
+            `${API}/${encodeURIComponent(id)}`;
+
+        console.log("Deleting complaint ID:", id);
+        console.log("Delete API URL:", url);
+
+        const response = await fetch(url, {
+            method: "DELETE",
+            credentials: "same-origin",
+            headers: {
+                "Accept": "application/json"
+            }
         });
 
-        const result = await response.json();
+        const result = await getResponseData(response);
+
+        console.log(
+            "Delete response:",
+            response.status,
+            result
+        );
 
         if (!response.ok) {
-            throw new Error(result.error || "Delete failed");
+            throw new Error(
+                result.error ||
+                result.message ||
+                "Delete failed"
+            );
         }
 
         alert("Report deleted successfully!");
@@ -274,72 +445,107 @@ async function deleteComplaint(id) {
         await loadComplaints();
 
     } catch (error) {
+        console.error("Delete complaint error:", error);
         alert(error.message);
     }
 }
 
+// =====================================
+// SEARCH REPORTS
+// =====================================
 
-// Search Reports
-searchInput.addEventListener("input", function() {
+if (searchInput) {
+    searchInput.addEventListener("input", function() {
+        const search = this.value.toLowerCase().trim();
 
-    const search = this.value.toLowerCase();
-
-    const filtered = complaints.filter(c =>
-        [c.name, c.email, c.category, c.subject, c.description]
-            .some(value =>
-                String(value || "").toLowerCase().includes(search)
+        const filtered = complaints.filter(c =>
+            [
+                c.name,
+                c.email,
+                c.category,
+                c.subject,
+                c.description
+            ].some(value =>
+                String(value || "")
+                    .toLowerCase()
+                    .includes(search)
             )
-    );
+        );
 
-    displayComplaints(filtered, "complaintList");
-});
+        displayComplaints(filtered, "complaintList");
+    });
+}
 
+// =====================================
+// DARK MODE
+// =====================================
 
-// Dark Mode
-document.getElementById("themeBtn").onclick = function() {
-    document.body.classList.toggle("dark");
-};
+document.getElementById("themeBtn")?.addEventListener(
+    "click",
+    function() {
+        document.body.classList.toggle("dark");
+    }
+);
 
+// =====================================
+// LOGOUT
+// =====================================
 
-// Logout Demo
-document.getElementById("logoutBtn").onclick = function() {
-    window.location.href = "/logout";
-};
+document.getElementById("logoutBtn")?.addEventListener(
+    "click",
+    function() {
+        window.location.href = "/logout";
+    }
+);
 
-
-// Initial Load
-loadComplaints();
-
+// =====================================
+// LOAD PROFILE
+// =====================================
 
 async function loadProfile() {
     try {
-        const response = await fetch("/api/profile");
+        const response = await fetch("/api/profile", {
+            credentials: "same-origin",
+            headers: {
+                "Accept": "application/json"
+            }
+        });
+
+        const user = await getResponseData(response);
 
         if (!response.ok) {
-            throw new Error("Unable to load profile");
+            throw new Error(
+                user.error || "Unable to load profile"
+            );
         }
 
-        const user = await response.json();
+        const profileName =
+            document.getElementById("profileName");
 
-        document.getElementById("profileName").value =
-            user.name || "";
+        const profileEmail =
+            document.getElementById("profileEmail");
 
-        document.getElementById("profileEmail").value =
-            user.email || "";
+        if (profileName) {
+            profileName.value = user.name || "";
+        }
+
+        if (profileEmail) {
+            profileEmail.value = user.email || "";
+        }
 
     } catch (error) {
         console.error("Profile error:", error);
     }
 }
 
-loadProfile();
-
+// =====================================
+// ANALYTICS CHARTS
+// =====================================
 
 let statusChart = null;
 let categoryChart = null;
 
 function updateAnalytics() {
-
     const total = complaints.length;
 
     const pending = complaints.filter(
@@ -354,37 +560,51 @@ function updateAnalytics() {
         c => c.status === "Resolved"
     ).length;
 
-    // Resolution Summary
-    document.getElementById("summaryTotal").textContent = total;
-    document.getElementById("summaryResolved").textContent = resolved;
+    const setText = (id, value) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value;
+    };
+
+    setText("summaryTotal", total);
+    setText("summaryResolved", resolved);
 
     const rate = total > 0
         ? Math.round((resolved / total) * 100)
         : 0;
 
-    document.getElementById("resolutionRate").textContent = rate + "%";
+    setText("resolutionRate", rate + "%");
 
-    // Check Chart.js
     if (typeof Chart === "undefined") {
         console.error("Chart.js is not loaded");
         return;
     }
 
-    // Status Doughnut Chart
-    const statusCanvas = document.getElementById("statusChart");
+    // STATUS DOUGHNUT CHART
+
+    const statusCanvas =
+        document.getElementById("statusChart");
 
     if (statusCanvas) {
-
-        if (statusChart) statusChart.destroy();
+        if (statusChart) {
+            statusChart.destroy();
+        }
 
         statusChart = new Chart(statusCanvas, {
             type: "doughnut",
 
             data: {
-                labels: ["Pending", "In Progress", "Resolved"],
+                labels: [
+                    "Pending",
+                    "In Progress",
+                    "Resolved"
+                ],
 
                 datasets: [{
-                    data: [pending, progress, resolved],
+                    data: [
+                        pending,
+                        progress,
+                        resolved
+                    ],
 
                     backgroundColor: [
                         "#f59e0b",
@@ -422,7 +642,8 @@ function updateAnalytics() {
         });
     }
 
-    // Category Bar Chart
+    // CATEGORY BAR CHART
+
     const categories = {};
 
     complaints.forEach(c => {
@@ -432,11 +653,13 @@ function updateAnalytics() {
             (categories[category] || 0) + 1;
     });
 
-    const categoryCanvas = document.getElementById("categoryChart");
+    const categoryCanvas =
+        document.getElementById("categoryChart");
 
     if (categoryCanvas) {
-
-        if (categoryChart) categoryChart.destroy();
+        if (categoryChart) {
+            categoryChart.destroy();
+        }
 
         categoryChart = new Chart(categoryCanvas, {
             type: "bar",
@@ -482,288 +705,407 @@ function updateAnalytics() {
     }
 }
 
+// =====================================
 // CONTRACTOR SEARCH AND FILTER
+// =====================================
 
-// CONTRACTOR SEARCH AND FILTER
+function filterContractors() {
+    const contractorSearchInput =
+        document.getElementById("contractorSearch");
 
-function setupContractorSearch() {
+    const categoryFilter =
+        document.getElementById("contractorFilter");
 
-    const searchInput = document.getElementById("contractorSearch");
-    const categoryFilter = document.getElementById("contractorFilter");
+    const search = contractorSearchInput
+        ? contractorSearchInput.value.toLowerCase().trim()
+        : "";
 
-    if (!searchInput || !categoryFilter) return;
+    const selectedCategory = categoryFilter
+        ? categoryFilter.value
+        : "All";
 
-    const cards = document.querySelectorAll(".contractor-card");
+    const cards = document.querySelectorAll(
+        "#contractorList .contractor-card"
+    );
 
-    function filterContractors() {
+    cards.forEach(card => {
+        const name =
+            card.querySelector("h2")
+                ?.textContent.toLowerCase() || "";
 
-        const search = searchInput.value.toLowerCase().trim();
-        const category = categoryFilter.value;
+        const category = card.dataset.category || "";
 
-        cards.forEach(card => {
+        const nameMatch = name.includes(search);
 
-            const name = card.querySelector("h2").textContent.toLowerCase();
-            const service = card.querySelector(".service").textContent;
+        const categoryMatch =
+            selectedCategory === "All" ||
+            category === selectedCategory;
 
-            const nameMatch = name.includes(search);
-
-            const categoryMatch =
-                category === "All" || service === category;
-
-            card.style.display =
-                nameMatch && categoryMatch ? "" : "none";
-        });
-    }
-
-    searchInput.addEventListener("input", filterContractors);
-    categoryFilter.addEventListener("change", filterContractors);
+        card.style.display =
+            nameMatch && categoryMatch ? "" : "none";
+    });
 }
 
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", setupContractorSearch);
-} else {
-    setupContractorSearch();
-}
-
-
-// CONTRACTOR SEARCH FUNCTION
-
-function setupContractorSearch() {
-
-    const searchInput = document.getElementById("contractorSearch");
-    const categoryFilter = document.getElementById("contractorFilter");
-    const cards = document.querySelectorAll(".contractor-card");
-
-    if (!searchInput) {
-        console.log("Contractor search input not found");
-        return;
-    }
-
-    function filterContractors() {
-
-        const searchText = searchInput.value.toLowerCase().trim();
-        const selectedCategory = categoryFilter
-            ? categoryFilter.value
-            : "All";
-
-        cards.forEach(card => {
-
-            const name = card.querySelector("h2")
-                .textContent.toLowerCase();
-
-            const category = card.dataset.category;
-
-            const nameMatch = name.includes(searchText);
-
-            const categoryMatch =
-                selectedCategory === "All" ||
-                category === selectedCategory;
-
-            card.style.display =
-                nameMatch && categoryMatch ? "" : "none";
-        });
-    }
-
-    searchInput.addEventListener("input", filterContractors);
-
-    if (categoryFilter) {
-        categoryFilter.addEventListener("change", filterContractors);
-    }
-
-    console.log("Contractor search is ready!");
-}
-
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", setupContractorSearch);
-} else {
-    setupContractorSearch();
-}
-
-// LOAD CONTRACTORS FROM MONGODB API
-
-
-let editingContractorId = null;
-
+// =====================================
 // LOAD CONTRACTORS
-async function loadContractors() {
+// =====================================
 
-    const container = document.getElementById("contractorList");
+async function loadContractors() {
+    const container =
+        document.getElementById("contractorList");
+
     if (!container) return;
 
     try {
-        const response = await fetch("/api/contractors");
+        const response = await fetch(CONTRACTOR_API, {
+            credentials: "same-origin",
+            headers: {
+                "Accept": "application/json"
+            }
+        });
+
+        const contractors = await getResponseData(response);
 
         if (!response.ok) {
-            throw new Error("Unable to load contractors");
+            throw new Error(
+                contractors.error ||
+                "Unable to load contractors"
+            );
         }
 
-        const contractors = await response.json();
         container.innerHTML = "";
+
+        if (
+            !Array.isArray(contractors) ||
+            contractors.length === 0
+        ) {
+            container.innerHTML =
+                "<p>No contractors available.</p>";
+            return;
+        }
 
         contractors.forEach(contractor => {
             const card = document.createElement("div");
+
+            const contractorId =
+                getContractorId(contractor);
+
             card.className = "contractor-card";
+            card.dataset.category =
+                contractor.category || "";
+
+            // CONTRACTOR NAME
 
             const name = document.createElement("h2");
-            name.textContent = contractor.name;
+            name.textContent = contractor.name || "";
+
+            // CATEGORY
 
             const category = document.createElement("p");
             category.className = "service";
-            category.textContent = contractor.category;
+            category.textContent =
+                contractor.category || "";
+
+            // PHONE
 
             const phone = document.createElement("p");
-            phone.textContent = "📞 " + contractor.phone;
+            phone.textContent =
+                "📞 " + (contractor.phone || "");
+
+            // STATUS
 
             const status = document.createElement("span");
-            status.className = "work-status " +
-                contractor.status.toLowerCase().replace(" ", "-");
-            status.textContent = contractor.status;
 
-            const editButton = document.createElement("button");
+            status.className = "work-status " +
+                (contractor.status || "available")
+                    .toLowerCase()
+                    .replace(" ", "-");
+
+            status.textContent =
+                contractor.status || "Available";
+
+            // EDIT BUTTON
+
+            const editButton =
+                document.createElement("button");
+
             editButton.textContent = "Edit";
             editButton.type = "button";
+            editButton.disabled = !contractorId;
 
-            editButton.addEventListener("click", () => {
-                editingContractorId = contractor._id;
+            editButton.addEventListener("click", function() {
+                if (!contractorId) {
+                    alert("Contractor ID is missing.");
+                    return;
+                }
 
-                document.getElementById("newContractorName").value = contractor.name;
-                document.getElementById("newContractorCategory").value = contractor.category;
-                document.getElementById("newContractorPhone").value = contractor.phone;
-                document.getElementById("newContractorStatus").value = contractor.status;
+                editingContractorId = contractorId;
 
-                document.querySelector("#contractorForm button[type='submit']")
-                    .textContent = "Update Contractor";
+                document.getElementById(
+                    "newContractorName"
+                ).value = contractor.name || "";
+
+                document.getElementById(
+                    "newContractorCategory"
+                ).value = contractor.category || "";
+
+                document.getElementById(
+                    "newContractorPhone"
+                ).value = contractor.phone || "";
+
+                document.getElementById(
+                    "newContractorStatus"
+                ).value = contractor.status || "";
+
+                const submitButton = document.querySelector(
+                    "#contractorForm button[type='submit']"
+                );
+
+                if (submitButton) {
+                    submitButton.textContent =
+                        "Update Contractor";
+                }
+
+                const message =
+                    document.getElementById(
+                        "contractorMessage"
+                    );
+
+                if (message) {
+                    message.textContent =
+                        "Editing contractor: " +
+                        contractor.name;
+
+                    message.style.color = "blue";
+                }
 
                 document.getElementById("contractorForm")
-                    .scrollIntoView({ behavior: "smooth" });
+                    ?.scrollIntoView({
+                        behavior: "smooth"
+                    });
             });
-            
-const deleteButton = document.createElement("button");
-deleteButton.textContent = "Delete";
-deleteButton.type = "button";
 
-deleteButton.addEventListener("click", async () => {
+            // DELETE BUTTON
 
-    const confirmDelete = confirm(
-        "Are you sure you want to delete " + contractor.name + "?"
-    );
+            const deleteButton =
+                document.createElement("button");
 
-    if (!confirmDelete) return;
+            deleteButton.textContent = "Delete";
+            deleteButton.type = "button";
+            deleteButton.disabled = !contractorId;
 
-    try {
-        const response = await fetch(
-            `/api/contractors/${contractor._id}`,
-            { method: "DELETE" }
-        );
+            deleteButton.addEventListener(
+                "click",
+                async function() {
+                    if (!contractorId) {
+                        alert("Contractor ID is missing.");
+                        return;
+                    }
 
-        const result = await response.json();
+                    const confirmDelete = confirm(
+                        "Are you sure you want to delete " +
+                        contractor.name + "?"
+                    );
 
-        if (!response.ok) {
-            throw new Error(result.error || "Delete failed");
-        }
+                    if (!confirmDelete) return;
 
-        alert("Contractor deleted successfully!");
+                    try {
+                        const response = await fetch(
+                            `${CONTRACTOR_API}/${encodeURIComponent(contractorId)}`,
+                            {
+                                method: "DELETE",
+                                credentials: "same-origin",
+                                headers: {
+                                    "Accept": "application/json"
+                                }
+                            }
+                        );
 
-        await loadContractors();
+                        const result =
+                            await getResponseData(response);
 
-    } catch (error) {
-        alert(error.message);
-        console.error(error);
-    }
-});
+                        if (!response.ok) {
+                            throw new Error(
+                                result.error ||
+                                "Contractor delete failed"
+                            );
+                        }
 
+                        alert(
+                            "Contractor deleted successfully!"
+                        );
 
-        card.append(name, category, phone, status, editButton , deleteButton);            container.appendChild(card);
+                        await loadContractors();
+
+                    } catch (error) {
+                        console.error(
+                            "Delete contractor error:",
+                            error
+                        );
+
+                        alert(error.message);
+                    }
+                }
+            );
+
+            card.append(
+                name,
+                category,
+                phone,
+                status,
+                editButton,
+                deleteButton
+            );
+
+            container.appendChild(card);
         });
 
+        filterContractors();
+
     } catch (error) {
-        console.error(error);
-        container.textContent = "Unable to load contractors.";
+        console.error(
+            "Load contractors error:",
+            error
+        );
+
+        container.textContent =
+            "Unable to load contractors.";
     }
 }
 
-
+// =====================================
 // ADD AND UPDATE CONTRACTOR
-const contractorForm = document.getElementById("contractorForm");
+// =====================================
+
+const contractorForm =
+    document.getElementById("contractorForm");
 
 if (contractorForm) {
-    contractorForm.addEventListener("submit", async function(e) {
-        e.preventDefault();
+    contractorForm.addEventListener(
+        "submit",
+        async function(e) {
+            e.preventDefault();
 
-        const contractor = {
-            name: document.getElementById("newContractorName").value.trim(),
-            category: document.getElementById("newContractorCategory").value,
-            phone: document.getElementById("newContractorPhone").value.trim(),
-            status: document.getElementById("newContractorStatus").value
-        };
+            const contractor = {
+                name: document.getElementById(
+                    "newContractorName"
+                ).value.trim(),
 
-        const message = document.getElementById("contractorMessage");
-        const isEditing = editingContractorId !== null;
+                category: document.getElementById(
+                    "newContractorCategory"
+                ).value,
 
-        const url = isEditing
-            ? `/api/contractors/${editingContractorId}`
-            : "/api/contractors";
+                phone: document.getElementById(
+                    "newContractorPhone"
+                ).value.trim(),
 
-        try {
-            const response = await fetch(url, {
-                method: isEditing ? "PUT" : "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(contractor)
-            });
+                status: document.getElementById(
+                    "newContractorStatus"
+                ).value
+            };
 
-            const result = await response.json();
+            const message =
+                document.getElementById(
+                    "contractorMessage"
+                );
 
-            if (!response.ok) {
-                throw new Error(result.error || "Operation failed");
+            const isEditing =
+                editingContractorId !== null;
+
+            const url = isEditing
+                ? `${CONTRACTOR_API}/${encodeURIComponent(editingContractorId)}`
+                : CONTRACTOR_API;
+
+            try {
+                const response = await fetch(url, {
+                    method: isEditing ? "PUT" : "POST",
+
+                    credentials: "same-origin",
+
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+
+                    body: JSON.stringify(contractor)
+                });
+
+                const result =
+                    await getResponseData(response);
+
+                if (!response.ok) {
+                    throw new Error(
+                        result.error || "Operation failed"
+                    );
+                }
+
+                if (message) {
+                    message.textContent = isEditing
+                        ? "Contractor updated successfully!"
+                        : "Contractor added successfully!";
+
+                    message.style.color = "green";
+                }
+
+                editingContractorId = null;
+
+                contractorForm.reset();
+
+                const submitButton =
+                    document.querySelector(
+                        "#contractorForm button[type='submit']"
+                    );
+
+                if (submitButton) {
+                    submitButton.textContent =
+                        "Add Contractor";
+                }
+
+                await loadContractors();
+
+            } catch (error) {
+                if (message) {
+                    message.textContent = error.message;
+                    message.style.color = "red";
+                }
+
+                console.error(
+                    "Contractor operation error:",
+                    error
+                );
             }
-
-            message.textContent = isEditing
-                ? "Contractor updated successfully!"
-                : "Contractor added successfully!";
-
-            message.style.color = "green";
-
-            editingContractorId = null;
-            contractorForm.reset();
-
-            document.querySelector("#contractorForm button[type='submit']")
-                .textContent = "Add Contractor";
-
-            await loadContractors();
-
-        } catch (error) {
-            message.textContent = error.message;
-            message.style.color = "red";
-            console.error(error);
         }
-    });
+    );
 }
 
+// =====================================
+// CONTRACTOR SEARCH EVENTS
+// =====================================
+
+const contractorSearch =
+    document.getElementById("contractorSearch");
+
+const contractorFilter =
+    document.getElementById("contractorFilter");
+
+if (contractorSearch) {
+    contractorSearch.addEventListener(
+        "input",
+        filterContractors
+    );
+}
+
+if (contractorFilter) {
+    contractorFilter.addEventListener(
+        "change",
+        filterContractors
+    );
+}
+
+// =====================================
+// INITIAL LOAD
+// =====================================
+
+loadComplaints();
+loadProfile();
 loadContractors();
-
-// CONTRACTOR CATEGORY FILTER
-
-const categoryFilter = document.getElementById(
-    "contractorCategoryFilter"
-);
-
-if (categoryFilter) {
-    categoryFilter.addEventListener("change", function () {
-        const selectedCategory = this.value;
-        const cards = document.querySelectorAll(
-            "#contractorList .contractor-card"
-        );
-
-        cards.forEach(card => {
-            const category = card.querySelector(".service").textContent;
-
-            card.style.display =
-                selectedCategory === "All" ||
-                category === selectedCategory
-                    ? ""
-                    : "none";
-        });
-    });
-}
