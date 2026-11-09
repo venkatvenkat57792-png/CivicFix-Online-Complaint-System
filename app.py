@@ -36,7 +36,6 @@ app.config.update(
 
 MONGO_URI = os.getenv("MONGO_URI")
 
-# Local connection is allowed only for local development.
 if not MONGO_URI:
     if os.getenv("RENDER"):
         raise RuntimeError("MONGO_URI is missing in Render Environment.")
@@ -56,8 +55,11 @@ users_collection = db["users"]
 complaints_collection = db["complaints"]
 contractors_collection = db["contractors"]
 
-# Admin email is configured through environment variables.
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "").strip().lower()
+# Admin email configured through environment variables
+ADMIN_EMAIL = os.getenv(
+    "ADMIN_EMAIL",
+    "venkatvenkat57792@gmail.com"
+).strip().lower()
 
 
 # ==========================================
@@ -87,8 +89,17 @@ def admin_required(function):
         if "user_id" not in session:
             return jsonify({"error": "Please login first"}), 401
 
-        if not ADMIN_EMAIL or session.get("user_email") != ADMIN_EMAIL:
-            return jsonify({"error": "Admin access required"}), 403
+        user_email = session.get("user_email", "").strip().lower()
+
+        if not ADMIN_EMAIL:
+            return jsonify({
+                "error": "Admin email is not configured on the server"
+            }), 500
+
+        if user_email != ADMIN_EMAIL:
+            return jsonify({
+                "error": "Admin access required"
+            }), 403
 
         return function(*args, **kwargs)
 
@@ -139,7 +150,6 @@ def register():
         )
 
     try:
-        # Create unique email index when needed.
         users_collection.create_index("email", unique=True)
 
         users_collection.insert_one({
@@ -156,13 +166,12 @@ def register():
             "register.html",
             error="This email is already registered."
         )
-
-    except PyMongoError:
+    except Exception as e:
+        app.logger.exception("REGISTRATION ERROR")
         return render_template(
-            "register.html",
-            error="Database connection failed. Please try again."
-        )
-
+        "register.html",
+        error="Database connection failed. Please try again."
+    )
 
 # ==========================================
 # USER LOGIN
@@ -197,7 +206,7 @@ def login():
             session.clear()
             session["user_id"] = str(user["_id"])
             session["user_name"] = user["name"]
-            session["user_email"] = user["email"]
+            session["user_email"] = user["email"].strip().lower()
 
             return redirect(url_for("home"))
 
@@ -233,9 +242,14 @@ def logout():
 @login_required
 def profile():
 
+    user_email = session.get("user_email", "").strip().lower()
+
     return jsonify({
         "name": session.get("user_name"),
-        "email": session.get("user_email")
+        "email": user_email,
+        "is_admin": bool(
+            ADMIN_EMAIL and user_email == ADMIN_EMAIL
+        )
     }), 200
 
 
@@ -306,7 +320,9 @@ def add_complaint():
         }), 201
 
     except PyMongoError:
-        return jsonify({"error": "Database operation failed"}), 503
+        return jsonify({
+            "error": "Database operation failed"
+        }), 503
 
 
 # ==========================================
@@ -330,7 +346,9 @@ def get_complaints():
         return jsonify(complaints), 200
 
     except PyMongoError:
-        return jsonify({"error": "Unable to fetch complaints"}), 503
+        return jsonify({
+            "error": "Unable to fetch complaints"
+        }), 503
 
 
 # ==========================================
@@ -367,17 +385,23 @@ def update_complaint(complaint_id):
         )
 
         if result.matched_count == 0:
-            return jsonify({"error": "Complaint not found"}), 404
+            return jsonify({
+                "error": "Complaint not found"
+            }), 404
 
         return jsonify({
             "message": "Complaint status updated successfully"
         }), 200
 
     except InvalidId:
-        return jsonify({"error": "Invalid complaint ID"}), 400
+        return jsonify({
+            "error": "Invalid complaint ID"
+        }), 400
 
     except PyMongoError:
-        return jsonify({"error": "Database operation failed"}), 503
+        return jsonify({
+            "error": "Database operation failed"
+        }), 503
 
 
 # ==========================================
@@ -395,31 +419,39 @@ def delete_complaint(complaint_id):
         })
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Complaint not found"}), 404
+            return jsonify({
+                "error": "Complaint not found"
+            }), 404
 
         return jsonify({
             "message": "Complaint deleted successfully"
         }), 200
 
     except InvalidId:
-        return jsonify({"error": "Invalid complaint ID"}), 400
+        return jsonify({
+            "error": "Invalid complaint ID"
+        }), 400
 
     except PyMongoError:
-        return jsonify({"error": "Database operation failed"}), 503
+        return jsonify({
+            "error": "Database operation failed"
+        }), 503
 
 
 # ==========================================
 # CONTRACTOR MANAGEMENT API
 # ==========================================
 
-# GET ALL CONTRACTORS - logged-in users can view.
+# GET ALL CONTRACTORS - ALL LOGGED-IN USERS
 
 @app.route("/api/contractors", methods=["GET"])
 @login_required
 def get_contractors():
 
     try:
-        contractors = list(contractors_collection.find().sort("_id", -1))
+        contractors = list(
+            contractors_collection.find().sort("_id", -1)
+        )
 
         for contractor in contractors:
             contractor["_id"] = str(contractor["_id"])
@@ -427,10 +459,14 @@ def get_contractors():
         return jsonify(contractors), 200
 
     except PyMongoError:
-        return jsonify({"error": "Unable to fetch contractors"}), 503
+        return jsonify({
+            "error": "Unable to fetch contractors"
+        }), 503
 
 
+# ==========================================
 # ADD CONTRACTOR - ADMIN ONLY
+# ==========================================
 
 @app.route("/api/contractors", methods=["POST"])
 @login_required
@@ -442,9 +478,12 @@ def add_contractor():
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid data"}), 400
 
-    required_fields = ["name", "category", "phone", "status"]
+    required_fields = [
+        "name", "category", "phone", "status"
+    ]
 
     for field in required_fields:
+
         if not str(data.get(field, "")).strip():
             return jsonify({
                 "error": f"{field} is required"
@@ -466,10 +505,14 @@ def add_contractor():
         }), 201
 
     except PyMongoError:
-        return jsonify({"error": "Unable to add contractor"}), 503
+        return jsonify({
+            "error": "Unable to add contractor"
+        }), 503
 
 
+# ==========================================
 # UPDATE CONTRACTOR - ADMIN ONLY
+# ==========================================
 
 @app.route("/api/contractors/<contractor_id>", methods=["PUT"])
 @login_required
@@ -481,9 +524,12 @@ def update_contractor(contractor_id):
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid data"}), 400
 
-    required_fields = ["name", "category", "phone", "status"]
+    required_fields = [
+        "name", "category", "phone", "status"
+    ]
 
     for field in required_fields:
+
         if not str(data.get(field, "")).strip():
             return jsonify({
                 "error": f"{field} is required"
@@ -501,20 +547,28 @@ def update_contractor(contractor_id):
         )
 
         if result.matched_count == 0:
-            return jsonify({"error": "Contractor not found"}), 404
+            return jsonify({
+                "error": "Contractor not found"
+            }), 404
 
         return jsonify({
             "message": "Contractor updated successfully"
         }), 200
 
     except InvalidId:
-        return jsonify({"error": "Invalid contractor ID"}), 400
+        return jsonify({
+            "error": "Invalid contractor ID"
+        }), 400
 
     except PyMongoError:
-        return jsonify({"error": "Unable to update contractor"}), 503
+        return jsonify({
+            "error": "Unable to update contractor"
+        }), 503
 
 
+# ==========================================
 # DELETE CONTRACTOR - ADMIN ONLY
+# ==========================================
 
 @app.route("/api/contractors/<contractor_id>", methods=["DELETE"])
 @login_required
@@ -527,17 +581,23 @@ def delete_contractor(contractor_id):
         })
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Contractor not found"}), 404
+            return jsonify({
+                "error": "Contractor not found"
+            }), 404
 
         return jsonify({
             "message": "Contractor deleted successfully"
         }), 200
 
     except InvalidId:
-        return jsonify({"error": "Invalid contractor ID"}), 400
+        return jsonify({
+            "error": "Invalid contractor ID"
+        }), 400
 
     except PyMongoError:
-        return jsonify({"error": "Unable to delete contractor"}), 503
+        return jsonify({
+            "error": "Unable to delete contractor"
+        }), 503
 
 
 # ==========================================
